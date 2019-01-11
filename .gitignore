@@ -1,0 +1,12 @@
+/zdx_upgrade/bin/Win32/Debug/*.ilk
+/zdx_upgrade/bin/Win32/Debug/*.pdb
+/zdx_upgrade/bin/Win32/Release/*.ipdb
+/zdx_upgrade/bin/Win32/Release/*.pdb
+/zdx_upgrade/bin/Win32/Release/*.iobj
+/zdx_upgrade/bin/x64/Debug/*.pdb
+/zdx_upgrade/bin/x64/Debug/*.ilk
+/zdx_upgrade/bin/x64/Release/*.ipdb
+/zdx_upgrade/bin/x64/Release/*.pdb
+/zdx_upgrade/bin/x64/Release/*.iobj
+/zdx_upgrade/.vs
+/tmp
