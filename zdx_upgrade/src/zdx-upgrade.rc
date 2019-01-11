@@ -1,0 +1,44 @@
+IDI_ICON_ZDX_UPGRADE    ICON    "zdx-upgrade.ico"
+#if defined(UNDER_CE)
+#include <winbase.h>
+#else
+#include <winver.h>
+#endif
+
+#define VER_FILEVERSION			1,0,0,0
+#define VER_FILEVERSION_STR		"1.0.0.0\0"
+#define VER_PRODUCTVERSION		1,0,0,0
+#define VER_PRODUCTVERSION_STR	"1.0.0.0\0"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION VER_FILEVERSION
+PRODUCTVERSION VER_PRODUCTVERSION
+FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+	FILEFLAGS VS_FF_DEBUG
+#else
+	FILEFLAGS 0x0L
+#endif
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE 0x0L
+BEGIN
+	BLOCK "StringFileInfo"
+	BEGIN
+		BLOCK "080404b0"
+		BEGIN
+			VALUE "CompanyName", " SHANGHAI VANGEN NETWORK."
+			VALUE "FileDescription", "zdx-upgrade"
+			VALUE "FileVersion", VER_FILEVERSION_STR
+			VALUE "InternalName", "zdx-upgrade.exe"
+			VALUE "LegalCopyright", "Copyright (C)2008-2019"
+			VALUE "OriginalFilename", "zdx-upgrade.exe"
+			VALUE "ProductName", "zdx-upgrade"
+			VALUE "ProductVersion", VER_PRODUCTVERSION_STR
+		END
+	END
+	BLOCK "VarFileInfo"
+	BEGIN
+		VALUE "Translation", 0x804, 1200
+	END
+END
