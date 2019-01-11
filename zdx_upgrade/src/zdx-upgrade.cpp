@@ -174,7 +174,8 @@ int zdx_upgrade_check_info(std::string& download_url,
     std::string& memo, 
     const std::string& api_url, 
     const std::string& upgrade_type, 
-    const std::string& md5_client)
+    const std::string& md5_client,
+    const std::string& current_version)
 {
     long long current_time = (long long)time(NULL);
     std::string timestamp = std::to_string(current_time);
@@ -266,8 +267,39 @@ int zdx_upgrade_check_info(std::string& download_url,
         LOG_ERROR("获取自动更新安装包内容不可用！ ", sbody);
         return -5;
     }
+    // 优先判断md5
     if (md5_client.length() > 0 && md5_client.compare(md5_server) == 0) {
         LOG_INFO("本地当前版本已经是最新版本");
+        return 1;
+    }
+    //// 再判断版本号,版本号按标准chromium版本号处理
+    //if (current_version.length() > 0 && version_server.length() > 0) {
+    //    size_t idx11 = 0;
+    //    size_t idx12 = 0;
+    //    size_t idx21 = 0;
+    //    size_t idx22 = 0;
+    //    int ic = 0;
+    //    int id = 0;
+    //    bool upgrade = false;
+    //    do {
+    //        idx12 = current_version.find(".", idx11);
+    //        idx22 = current_version.find(".", idx21);
+    //        ic = std::atoi(current_version.substr(idx11, idx12).c_str());
+    //        id = std::atoi(version_server.substr(idx21, idx22).c_str());
+    //        if (ic < id) {
+    //            upgrade = true;
+    //            break;
+    //        }
+    //        idx11 = idx12 + 1;
+    //        idx21 = idx22 + 1;
+    //    } while ((idx12 != std::string::npos) && (idx22 != std::string::npos));
+    //    if (upgrade) {
+    //        return 1;
+    //    }
+    //}
+
+    // 允许降级
+    if (current_version.compare(version_server) == 0) {
         return 1;
     }
 
@@ -393,6 +425,7 @@ int main(int argc, char* argv[])
     int upgrade_mode;                     // 更新调用模式, 1:只获取服务端信息,10:下载更新, 20:本地安装, 30:执行全部过程
 
     upgrade_mode = 30;
+    upgrade_current_version = "0.0.0.0";
 
     int nRet = EXIT_SUCCESS;
     char path[MAX_PATH] = { 0 };
@@ -568,7 +601,7 @@ int main(int argc, char* argv[])
             std::string version_server = "";
             std::string download_url;
             std::string memo = "";
-            nRet = zdx_upgrade_check_info(download_url, md5_server, version_server, memo, upgrade_api_url, upgrade_type, upgrade_client_md5);
+            nRet = zdx_upgrade_check_info(download_url, md5_server, version_server, memo, upgrade_api_url, upgrade_type, upgrade_client_md5, upgrade_current_version);
             if (md5_server.length() > 0) {
                 memset(zud.zdx_upgrade_md5, 0, sizeof(zud.zdx_upgrade_md5));
                 memcpy(zud.zdx_upgrade_md5, md5_server.c_str(), md5_server.length());
@@ -698,7 +731,7 @@ int main(int argc, char* argv[])
             std::string version_server = "";
             std::string download_url;
             std::string memo = "";
-            nRet = zdx_upgrade_check_info(download_url, md5_server, version_server, memo, upgrade_api_url, upgrade_type, upgrade_client_md5);
+            nRet = zdx_upgrade_check_info(download_url, md5_server, version_server, memo, upgrade_api_url, upgrade_type, upgrade_client_md5, upgrade_current_version);
             if (md5_server.length() > 0) {
                 memset(zud.zdx_upgrade_md5, 0, sizeof(zud.zdx_upgrade_md5));
                 memcpy(zud.zdx_upgrade_md5, md5_server.c_str(), md5_server.length());
