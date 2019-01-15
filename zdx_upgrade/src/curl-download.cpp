@@ -15,6 +15,8 @@ using namespace std;
 #pragma comment(lib, "wldap32.lib")
 #pragma comment(lib, "crypt32.lib") // 选择ssl功能需要该lib
 
+bool read_write_status(struct zdx_upgrade_data& zud, HANDLE hMap, bool is_read = true);
+
 size_t CurlDownload::WriteBodyCallback(char *ptr, size_t size, size_t nmemb, std::string &str)
 {
 	size_t total = size * nmemb;
@@ -57,15 +59,19 @@ size_t CurlDownload::DownloadProgress(void *buffer, double dltotal, double dlnow
 {
     CurlDownload* pDownloader = (CurlDownload*)buffer;
     if (pDownloader && (int(dltotal) > 0)) {
-        double ztotol = pDownloader->m_download_file_size + dltotal;
+        double ztotal = pDownloader->m_download_file_size + dltotal;
         double znow = pDownloader->m_download_file_size + dlnow;
         if ((long long)znow == pDownloader->m_max_file_size) {
             pDownloader->m_download_status = 2;
         }
+        // 更新共享内存进度
+        pDownloader->m_zud.zdx_upgrade_download_size = (long long)znow;
+        pDownloader->m_zud.zdx_upgrade_max_file_size = (long long)ztotal;
+        read_write_status(pDownloader->m_zud, pDownloader->m_hmap, false);
 
-        pDownloader->m_current_progress = (int)((znow / ztotol) * 100);
+        pDownloader->m_current_progress = (int)((znow / ztotal) * 100);
         // 通知进度条更新下载进度  
-        std::cout << "文件大小:" << (long long)ztotol / 1024 << "KB,已下载:" << (long long)znow / 1024 << "KB,下载进度: " << pDownloader->m_current_progress << " %" << std::endl;
+        std::cout << "文件大小:" << (long long)ztotal / 1024 << "KB,已下载:" << (long long)znow / 1024 << "KB,下载进度: " << pDownloader->m_current_progress << " %" << std::endl;
         
         //// test 断点续传
         //static int n = 0;

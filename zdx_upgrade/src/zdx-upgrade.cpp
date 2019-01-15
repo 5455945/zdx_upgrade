@@ -23,7 +23,6 @@
 #include <map>
 #include <iomanip>
 
-
 using namespace std;
 
 #pragma comment( lib, "shell32.lib")
@@ -75,27 +74,6 @@ const std::string g_log_prefix = "zdx_upgrade";
 // 实际下载的url大致内容:url = "http://zdx.s-api.yunvm.com/files/chromium/zdx_installer-win32-1.0.0.17.exe";
 const std::string g_default_zdx_upgrade_api_url = "https://zdx.app/api/v1/desktop/update";
 const std::string g_default_zdx_upgrade_type = "zdx_browser_win32_upgrade";
-
-// 这个结构体，是未主进程zdx.exe提供数据的，调用zdx_upgrade.exe的参数，通过命令行传递，注意共享内存大小
-struct zdx_upgrade_data {
-    int        zdx_upgrade_status;                 // 更新状态
-    long long  zdx_upgrade_max_file_size;          // 服务端文件(zdx_installer.exe)总大小
-    long long  zdx_upgrade_download_size;          // 已经下载大小
-    char       zdx_upgrade_md5[32+1];              // 服务端文件md5码
-    char       zdx_upgrade_version[32];            // 服务端返回版本号
-    char       zdx_upgrade_memo[256];              // 更新描述，如果超过255个字符，截断
-    char       zdx_upgrade_filename[MAX_PATH];     // 服务端返回文件名称(只是文件名:zdx_install.exe,或 zdx_install_1.0.0.16.exe，不包含url)
-    char       zdx_upgrade_api_url[MAX_PATH];      // 获取自动更新包api地址
-    char       zdx_upgrade_type[64];               // 更新包的类型，zdx_browser_win32_upgrade，zdx_browser_win64_upgrade
-    char       zdx_upgrade_client_md5[32+1];       // 上次更新包的md5码，保存在配置文件中
-    char       zdx_upgrade_current_version[32];    // 客户端版本
-    char       zdx_upgrade_client_path[MAX_PATH];  // 客户端安装路径
-    char       zdx_upgrade_url[512];               // 安装包下载url地址
-    int        zdx_upgrade_mode;                   // 更新调用模式, 1:只获取服务端信息,10:下载更新, 20:本地安装, 30:执行全部过程
-    zdx_upgrade_data() {
-        memset(this, 0, sizeof(zdx_upgrade_data));
-    }
-};
 
 std::string GbkToUtf8(const char *src_str)
 {
@@ -227,7 +205,6 @@ int zdx_upgrade_check_info(std::string& download_url,
     rapidjson::Value& data = d["data"];
 
     std::string zdx_upgrade_type;
-    std::string zdx_upgrade_url;
     std::string zdx_upgrade_level;
     std::string zdx_upgrade_usability;
 
@@ -237,7 +214,7 @@ int zdx_upgrade_check_info(std::string& download_url,
     }
     if (data.HasMember("url") && data["url"].IsString()) {
         rapidjson::Value& url = data["url"];
-        zdx_upgrade_url = url.GetString();
+        download_url = url.GetString();
     }
     if (data.HasMember("version") && data["version"].IsString()) {
         rapidjson::Value& version = data["version"];
@@ -272,45 +249,43 @@ int zdx_upgrade_check_info(std::string& download_url,
         LOG_INFO("本地当前版本已经是最新版本");
         return 1;
     }
-    //// 再判断版本号,版本号按标准chromium版本号处理
-    //if (current_version.length() > 0 && version_server.length() > 0) {
-    //    size_t idx11 = 0;
-    //    size_t idx12 = 0;
-    //    size_t idx21 = 0;
-    //    size_t idx22 = 0;
-    //    int ic = 0;
-    //    int id = 0;
-    //    bool upgrade = false;
-    //    do {
-    //        idx12 = current_version.find(".", idx11);
-    //        idx22 = current_version.find(".", idx21);
-    //        ic = std::atoi(current_version.substr(idx11, idx12).c_str());
-    //        id = std::atoi(version_server.substr(idx21, idx22).c_str());
-    //        if (ic < id) {
-    //            upgrade = true;
-    //            break;
-    //        }
-    //        idx11 = idx12 + 1;
-    //        idx21 = idx22 + 1;
-    //    } while ((idx12 != std::string::npos) && (idx22 != std::string::npos));
-    //    if (upgrade) {
-    //        return 1;
-    //    }
-    //}
-
-    // 允许降级
-    if (current_version.compare(version_server) == 0) {
-        return 1;
+    // 判断版本号,版本号按标准chromium版本号处理
+    if (current_version.length() > 0 && version_server.length() > 0) {
+        size_t idx11 = 0;
+        size_t idx12 = 0;
+        size_t idx21 = 0;
+        size_t idx22 = 0;
+        int ic = 0;
+        int id = 0;
+        bool upgrade = false;
+        do {
+            idx12 = current_version.find(".", idx11);
+            idx22 = version_server.find(".", idx21);
+            ic = std::atoi(current_version.substr(idx11, idx12).c_str());
+            id = std::atoi(version_server.substr(idx21, idx22).c_str());
+            if (ic < id) {
+                upgrade = true;
+                break;
+            }
+            idx11 = idx12 + 1;
+            idx21 = idx22 + 1;
+        } while ((idx12 != std::string::npos) && (idx22 != std::string::npos));
+        if (!upgrade) {
+            return 1;
+        }
     }
 
-    download_url = zdx_upgrade_url;
+    //// 允许降级
+    //if (current_version.compare(version_server) == 0) {
+    //    return 1;
+    //}
 
     return 0;
 }
 
 // 下载服务端最新版本
-int zdx_upgrade_download(const std::string& download_url, const std::string& local_filename) {
-    CurlDownload CurlDownload(download_url, "application/x-www-form-urlencoded; charset=UTF-8");
+int zdx_upgrade_download(const std::string& download_url, const std::string& local_filename, struct zdx_upgrade_data& zud, HANDLE& hMap) {
+    CurlDownload CurlDownload(download_url, zud, hMap, "application/x-www-form-urlencoded; charset=UTF-8");
     long long upgrade_max_file_size = CurlDownload.GetMaxDownloadSize();
     if (upgrade_max_file_size == 0) { // 更新包大小为0
 
@@ -678,7 +653,7 @@ int main(int argc, char* argv[])
             LOG_INFO("下载中.");
 
             std::string local_filename = cur_path + upgrade_filename;
-            nRet = zdx_upgrade_download(upgrade_url, local_filename);
+            nRet = zdx_upgrade_download(upgrade_url, local_filename, zud, g_hSharedMemoryMap);
             if (nRet != 0) { // 安装
                 zud.zdx_upgrade_status = (int)zdx_upgrade_status::download_fail;
                 std::string info = GbkToUtf8("下载失败");
@@ -772,7 +747,7 @@ int main(int argc, char* argv[])
                 LOG_INFO("下载中.");
                 std::string local_filename = cur_path + installer_filename;
                 // 这里应该还有些问题，怎么指定安装目录？？？
-                nRet = zdx_upgrade_download(download_url, local_filename);
+                nRet = zdx_upgrade_download(download_url, local_filename, zud, g_hSharedMemoryMap);
                 if (nRet != 0) { // 安装
                     zud.zdx_upgrade_status = (int)zdx_upgrade_status::download_fail;
                     std::string info = GbkToUtf8("下载失败");
